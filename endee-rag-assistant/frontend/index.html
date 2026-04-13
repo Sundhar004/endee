@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endee RAG Assistant</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,sans-serif;background:#0d1117;color:#c9d1d9;padding:20px}
+        .container{max-width:700px;margin:0 auto}
+        h1{color:#58a6ff;margin-bottom:10px}
+        .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:20px;margin-bottom:20px}
+        label{display:block;margin-bottom:8px;color:#8b949e}
+        textarea,input{width:100%;padding:12px;border:1px solid #30363d;border-radius:6px;background:#0d1117;color:#c9d1d9;margin-bottom:12px}
+        textarea{min-height:100px}
+        button{background:#238636;color:#fff;border:none;padding:12px 24px;border-radius:6px;cursor:pointer}
+        button:disabled{background:#30363d}
+        .result{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;margin-top:16px}
+        .answer{color:#7ee787;line-height:1.6}
+        .source{background:#0d1117;padding:10px;border-radius:4px;margin-top:8px;font-size:14px}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Endee RAG Assistant</h1>
+        <div class="card">
+            <label>Document Content</label>
+            <textarea id="docContent" placeholder="Paste document text here..."></textarea>
+            <input type="text" id="docId" placeholder="Document ID">
+            <button onclick="uploadDoc()">Upload & Index</button>
+        </div>
+        <div class="card">
+            <label>Ask a Question</label>
+            <input type="text" id="queryInput" placeholder="What do you want to know?">
+            <button onclick="askQuery()">Ask</button>
+        </div>
+        <div id="result"></div>
+    </div>
+    <script>
+        const API = "http://localhost:8000";
+        async function uploadDoc(){
+            const content = document.getElementById("docContent").value;
+            const docId = document.getElementById("docId").value;
+            if(!content || !docId) return alert("Fill all fields");
+            const res = await fetch(`${API}/api/documents`, {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({content, document_id: docId})
+            });
+            const data = await res.json();
+            document.getElementById("result").innerHTML = `<div class="result"><div class="answer">Indexed ${data.chunks_indexed} chunks!</div></div>`;
+        }
+        async function askQuery(){
+            const query = document.getElementById("queryInput").value;
+            if(!query) return alert("Enter a question");
+            document.getElementById("result").innerHTML = "<div class='result loading'>Searching...</div>";
+            const res = await fetch(`${API}/api/query`, {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({query, top_k: 3})
+            });
+            const data = await res.json();
+            let sources = data.sources.map(s => `<div class="source">${s.text}<br><span class="source-sim">Similarity: ${s.similarity}</span></div>`).join("");
+            document.getElementById("result").innerHTML = `<div class="result"><div class="answer">${data.answer}</div><div>${sources}</div></div>`;
+        }
+    </script>
+</body>
+</html>
